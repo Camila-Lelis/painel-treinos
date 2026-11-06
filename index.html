@@ -149,9 +149,9 @@
 
   <form class="aviso" id="entrada" hidden>
     <h2>Entrar no painel</h2>
-    <p>Cole aqui o link ou o código pessoal que você recebeu da Camila.</p>
+    <p>Digite a sua senha ou cole o link pessoal que você recebeu da Camila.</p>
     <div class="entrar-linha">
-      <input id="e-cod" aria-label="Link ou código pessoal" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <input id="e-cod" type="password" aria-label="Senha ou link pessoal" autocomplete="current-password" autocapitalize="off" spellcheck="false">
       <button class="pri" type="submit">Entrar</button>
     </div>
     <div class="msg" id="e-msg"></div>
@@ -469,6 +469,17 @@ async function entra(cod){
     $('e-cod').value=cod;mostraEntrada('Não foi possível conectar. Confira a internet e toque em Entrar.'); // o código guardado continua valendo
   }
 }
+async function entraComSenha(senha){
+  $('entrada').hidden=true;$('carregando').hidden=false;$('e-cod').value='';
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'entrar',senha})});
+    const j=await r.json();
+    if(j.ok){await entra(j.acesso);return;}
+    mostraEntrada(j.error||'Erro no servidor. Tente de novo.');
+  }catch(e){
+    mostraEntrada('Não foi possível conectar. Confira a internet e tente de novo.');
+  }
+}
 function sair(){
   esqueceCodigo();COD='';D=null;
   $('e-cod').value='';$('coaches').hidden=true;$('doc').hidden=true;$('regras').hidden=true;
@@ -476,8 +487,11 @@ function sair(){
 }
 $('entrada').addEventListener('submit',e=>{
   e.preventDefault();
-  const s=$('e-cod').value.trim(),m=s.match(/[?&]acesso=([^&#\s]+)/),c=m?m[1]:s;
-  if(c)entra(c);else $('e-msg').textContent='Cole o link ou o código pessoal.';
+  const s=$('e-cod').value.trim(),m=s.match(/[?&]acesso=([^&#\s]+)/);
+  if(!s){$('e-msg').textContent='Digite a senha ou cole o link pessoal.';return;}
+  if(m)entra(m[1]);
+  else if(/^[0-9a-f]{32}$/i.test(s))entra(s); // o código pessoal sozinho, sem o restante do link
+  else entraComSenha(s);
 });
 if(EH_APP){
   const doLink=new URLSearchParams(location.search).get('acesso');
