@@ -483,6 +483,7 @@ async function entraComSenha(senha){
 function sair(){
   esqueceCodigo();COD='';D=null;
   $('e-cod').value='';$('coaches').hidden=true;$('doc').hidden=true;$('regras').hidden=true;
+  $('semanas').innerHTML='';$('c-lista').innerHTML='';$('eu').textContent=''; // nada fica escondido na página depois de sair
   mostraEntrada();
 }
 $('entrada').addEventListener('submit',e=>{
