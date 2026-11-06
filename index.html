@@ -71,6 +71,10 @@
   .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
   .chip{font-size:11.5px;border:1px solid #4a4a4a;border-radius:99px;padding:0 7px;white-space:nowrap}
   .card .gr{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+  .card .dv{display:block;font-size:12.5px;margin-top:6px;padding:4px 8px;border-left:3px solid var(--gold);background:var(--gold-soft);border-radius:0 6px 6px 0}
+  .duvida{margin-top:10px;padding:8px 10px;border-left:3px solid var(--gold);background:rgba(0,0,0,.25);border-radius:0 8px 8px 0;font-size:13.5px}
+  .duvida p{margin:0}
+  .duvida .ajuda{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--muted)}
   .fds{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
   .fds .rot{font-size:12.5px;color:var(--muted);margin-bottom:6px}
   .card.novo{min-height:0;justify-content:center;align-items:center;border-style:dashed;background:transparent;color:var(--muted);padding:8px}
@@ -160,7 +164,7 @@
         <h2 id="m-nome"></h2>
         <button data-a="mes" data-d="1" aria-label="Próximo mês">›</button>
       </div>
-      <div class="eu"><span id="eu"></span><a id="doc" target="_blank" rel="noopener" hidden>Abrir a memória no Google Docs</a><button class="mini" id="sair" data-a="sair" hidden>Sair</button></div>
+      <div class="eu"><span id="eu"></span><a id="doc" target="_blank" rel="noopener" hidden>Abrir a memória no Google Docs</a><a id="regras" target="_blank" rel="noopener" hidden>Regras da IA</a><button class="mini" id="sair" data-a="sair" hidden>Sair</button></div>
     </div>
     <p class="sub" id="m-info"></p>
     <div id="semanas"></div>
@@ -254,7 +258,8 @@ function cardCheio(t,rot){
     `<span class="pr">${esc(t.principal)}</span>`+
     (tp.length?`<span class="tempos">${tp.map(([r,v])=>`<span class="tp"><small>${r}</small><b>${esc(v)} min</b></span>`).join('')}</span>`:'')+
     (t.tipo?`<span class="chips"><span class="chip">${esc(t.tipo)}</span></span>`:'')+
-    (t.grupos?`<span class="gr">${esc(t.grupos)}</span>`:'')+`</button>`;
+    (t.grupos?`<span class="gr">${esc(t.grupos)}</span>`:'')+
+    (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+`</button>`;
 }
 function cardVazio(s,n){
   const rot='Treino '+n;
@@ -302,7 +307,7 @@ function montaAnalise(){
   const el=$('ed-analise');
   if(analisando){el.innerHTML='<div class="analise neutra">Analisando o treino com a IA…</div>';return;}
   if(tempos(A).length||A.tipo||A.grupos){
-    el.innerHTML=`<div class="analise"><div class="t">Análise da IA</div><div class="g">${tempos(A).map(([r,v])=>`<div><span>${r}</span><b>${esc(v)} min</b></div>`).join('')}<div><span>Tipo</span><b>${esc(A.tipo)}</b></div><div class="w"><span>Grupamentos musculares</span><b>${esc(A.grupos)}</b></div></div>${A.comentario?`<p>${esc(A.comentario)}</p>`:''}<p class="nota">Tempo só do treino principal, sem aquecimento e finalização. Estimativa automática: confira antes de usar.</p></div>`;
+    el.innerHTML=`<div class="analise"><div class="t">Análise da IA</div><div class="g">${tempos(A).map(([r,v])=>`<div><span>${r}</span><b>${esc(v)} min</b></div>`).join('')}<div><span>Tipo</span><b>${esc(A.tipo)}</b></div><div class="w"><span>Grupamentos principais</span><b>${esc(A.grupos)}</b></div></div>${A.comentario?`<p>${esc(A.comentario)}</p>`:''}${A.duvida?`<div class="duvida"><p><b>Dúvida da IA:</b> ${esc(A.duvida)}</p>${pode()?`<div class="ajuda"><span>Responda em Observações e salve: a IA analisa de novo.</span><button data-a="responder">Responder</button></div>`:''}</div>`:''}<p class="nota">Tempo só do treino principal, sem aquecimento e finalização. Estimativa automática: confira antes de usar.</p></div>`;
     return;
   }
   el.innerHTML=!A.novo&&pode()&&!D.ia?'<div class="analise neutra">A análise automática de tempo, grupamentos e tipo de treino ainda não foi ligada.</div>':'';
@@ -381,6 +386,7 @@ function renderCoaches(){
   if(D.eu.papel!=='dona')return;
   $('coaches').hidden=false;
   if(D.docUrl){$('doc').href=D.docUrl;$('doc').hidden=false;}
+  if(D.regrasUrl){$('regras').href=D.regrasUrl;$('regras').hidden=false;}
   $('c-lista').innerHTML=(D.coaches||[]).length?D.coaches.map(k=>`<tr>
     <td>${esc(k.nome)}</td>
     <td><select data-coach="${esc(k.id)}" aria-label="Permissão de ${esc(k.nome)}"><option value="ver"${k.papel==='ver'?' selected':''}>Só visualizar</option><option value="editar"${k.papel==='editar'?' selected':''}>Pode editar</option></select></td>
@@ -412,6 +418,7 @@ document.addEventListener('click',e=>{
   if(a==='fechar')fechar(b);
   if(a==='salvar')salvar(b);
   if(a==='analisar')analisar();
+  if(a==='responder'){$('f-obs').focus();$('f-obs').scrollIntoView({block:'center'});}
   if(a==='excluir')confirma2(b,'Confirmar exclusão',excluir);
   if(a==='c-novo'){const n=$('c-nome').value.trim();if(!n){$('c-msg').textContent='Informe o nome do coach.';return;}coachAcao({action:'coach-novo',nome:n,papel:$('c-papel').value}).then(ok=>{if(ok)$('c-nome').value='';});}
   if(a==='c-copiar')copiar(b);
@@ -464,7 +471,7 @@ async function entra(cod){
 }
 function sair(){
   esqueceCodigo();COD='';D=null;
-  $('e-cod').value='';$('coaches').hidden=true;$('doc').hidden=true;
+  $('e-cod').value='';$('coaches').hidden=true;$('doc').hidden=true;$('regras').hidden=true;
   mostraEntrada();
 }
 $('entrada').addEventListener('submit',e=>{
