@@ -64,6 +64,13 @@
   .card .q b{color:var(--gold)}
   .card .tit{display:block;font-weight:700;margin:1px 0 4px;overflow-wrap:anywhere}
   .card.vazio .tit{font-weight:400}
+  .card[data-a]{cursor:pointer}
+  .card[data-a]:hover{border-color:var(--gold)}
+  .card button.q{width:100%;padding:0;background:none;border:0;border-radius:0;font:inherit;font-size:12px;color:var(--muted);text-align:left}
+  .aq{width:100%;margin-bottom:2px;cursor:default}
+  .aq summary{cursor:pointer;padding:6px 0;font-size:12.5px;font-weight:600;color:var(--muted)}
+  .aq summary:hover{color:var(--text)}
+  .aq div{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.4;padding-bottom:6px}
   .card .pr{display:block;width:100%;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.4;margin:2px 0 8px}
   .tempos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%;margin-top:auto;padding-top:6px;border-top:1px solid var(--line)}
   .tp small{display:block;font-size:11px;color:var(--muted)}
@@ -91,6 +98,7 @@
   .novoCoach{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:4px}
   .field{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
   .msg{font-size:12.5px;color:var(--bad);min-height:18px}
+  .msg.ok{color:var(--good);font-weight:600}
   .entrar-linha{display:flex;gap:8px;margin-top:12px}
   #entrada .msg{margin-top:8px}
   dialog{width:min(880px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:0}
@@ -241,11 +249,16 @@ let mes=(()=>{const k=mesDaSemana(iso(segundaDe(new Date())));return k<INICIO?IN
 let A=null,analisando=false,tConf=null;
 
 function status(msg,cls){const el=$('st');el.className=cls||'';el.textContent=msg;}
-function salvoOk(){const d=new Date();status('Salvo às '+dois(d.getHours())+':'+dois(d.getMinutes()),'ok');}
+const horaAgora=()=>{const d=new Date();return dois(d.getHours())+':'+dois(d.getMinutes());};
+function salvoOk(){status('Salvo às '+horaAgora(),'ok');}
 
 async function post(body){
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({acesso:COD},body))});
-  const j=await r.json();if(!j.ok)throw new Error(j.error||'Erro no servidor');return j;
+  let j;
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({acesso:COD},body))});
+    j=await r.json();
+  }catch(e){throw new Error('sem conexão com o servidor. Confira a internet e tente de novo.');}
+  if(!j.ok)throw new Error(j.error||'Erro no servidor');return j;
 }
 function guarda(t){const i=D.treinos.findIndex(x=>x.id===t.id);if(i>=0)D.treinos[i]=t;else D.treinos.push(t);}
 
@@ -253,13 +266,15 @@ function guarda(t){const i=D.treinos.findIndex(x=>x.id===t.id);if(i>=0)D.treinos
 const tempos=t=>[['Avançado',t.tempoAvancado],['Básico',t.tempoBasico],['Iniciante',t.tempoIniciante]].filter(x=>x[1]);
 function cardCheio(t,rot){
   const tp=tempos(t);
-  return `<button class="card" data-a="abrir" data-id="${esc(t.id)}"><span class="q"><b>${esc(rot)}</b>${t.dias&&t.treino!=='Avulso'?' · '+esc(t.dias):''}</span>`+
+  // o cartão é um bloco, não um botão: um menu expansível não funciona dentro de um botão
+  return `<div class="card" data-a="abrir" data-id="${esc(t.id)}"><button class="q" data-a="abrir" data-id="${esc(t.id)}"><b>${esc(rot)}</b>${t.dias&&t.treino!=='Avulso'?' · '+esc(t.dias):''}</button>`+
     (t.titulo?`<span class="tit">${esc(t.titulo)}</span>`:'')+
+    (t.aquecimento?`<details class="aq"><summary>Aquecimento</summary><div>${esc(t.aquecimento)}</div></details>`:'')+
     `<span class="pr">${esc(t.principal)}</span>`+
     (tp.length?`<span class="tempos">${tp.map(([r,v])=>`<span class="tp"><small>${r}</small><b>${esc(v)} min</b></span>`).join('')}</span>`:'')+
     (t.tipo?`<span class="chips"><span class="chip">${esc(t.tipo)}</span></span>`:'')+
     (t.grupos?`<span class="gr">${esc(t.grupos)}</span>`:'')+
-    (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+`</button>`;
+    (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+`</div>`;
 }
 function cardVazio(s,n){
   const rot='Treino '+n;
@@ -317,7 +332,7 @@ function montaAcoes(){
   if(!pode()){$('ed-acts').innerHTML='<button data-a="fechar">Fechar</button>';return;}
   $('ed-acts').innerHTML=`<button class="pri" data-a="salvar">Salvar</button>`+
     (!A.novo&&D.ia?`<button data-a="analisar">Analisar de novo</button>`:'')+
-    `<span class="msg" id="ed-msg"></span>`+
+    `<span class="msg" id="ed-msg" role="status"></span>`+
     (!A.novo?`<button data-a="excluir">Excluir</button>`:'');
 }
 function abre(t){
@@ -340,20 +355,26 @@ const sujo=()=>{
   const f=lerForm();
   return ['dias','titulo','aquecimento','principal','finalizacao','obs'].some(k=>(A[k]||'')!==f[k]);
 };
-function msgEd(m){const e=$('ed-msg');if(e)e.textContent=m;}
+function msgEd(m,ok){const e=$('ed-msg');if(e){e.textContent=m;e.classList.toggle('ok',!!ok);}}
 
 async function salvar(btn){
   const t=lerForm();
   if(!t.principal){msgEd('Preencha o treino principal.');$('f-principal').focus();return;}
-  btn.disabled=true;msgEd('');status('Salvando…');
+  btn.disabled=true;btn.textContent='Salvando…';msgEd('');status('Salvando…');
   try{
     const j=await post({action:'salvar',treino:t});
     A=j.treino;guarda(A);render();salvoOk();
     $('ed-tit').textContent=rotuloTreino(A);
     $('ed-x').textContent='✕';$('ed-x').classList.remove('arm');
     montaAcoes();montaAnalise();
-    if(j.mudou&&D.ia)await analisar();
-  }catch(e){msgEd('Não salvou: '+e.message);status('Erro ao salvar','err');btn.disabled=false;}
+    const id=A.id,salvo='Treino salvo às '+horaAgora();
+    msgEd(salvo+'.',true);
+    if(j.mudou&&D.ia){
+      msgEd(salvo+'. Analisando com a IA…',true);
+      const erro=await analisar();
+      if(A&&A.id===id&&(erro||!sujo()))msgEd(erro?salvo+', mas a análise falhou: '+erro:salvo+' e analisado pela IA.',!erro);
+    }
+  }catch(e){msgEd('Não salvou: '+e.message);status('Erro ao salvar','err');btn.disabled=false;btn.textContent='Salvar';}
 }
 async function analisar(){
   const id=A.id;
@@ -362,7 +383,8 @@ async function analisar(){
   try{const j=await post({action:'analisar',id});guarda(j.treino);if(A&&A.id===id)A=Object.assign(A,j.treino);render();}
   catch(e){erro=e.message;}
   analisando=false;
-  if(A&&A.id===id){montaAnalise();montaAcoes();if(erro)msgEd('Análise: '+erro);}
+  if(A&&A.id===id){montaAnalise();montaAcoes();msgEd(erro?'Análise: '+erro:'Análise atualizada.',!erro);}
+  return erro;
 }
 function confirma2(btn,texto,fn){
   if(btn.classList.contains('arm')){clearTimeout(tConf);fn();return;}
@@ -380,6 +402,8 @@ function fechar(btn){
   fechaJa();
 }
 $('ed').addEventListener('cancel',e=>{if(sujo()){e.preventDefault();fechar($('ed-x'));}else A=null;});
+// ao voltar a editar, "salvo" deixa de ser verdade
+$('ed-corpo').addEventListener('input',()=>{const e=$('ed-msg');if(e&&e.classList.contains('ok'))msgEd('');});
 
 // ---------- coaches ----------
 function renderCoaches(){
@@ -409,6 +433,7 @@ async function copiar(btn){
 
 // ---------- eventos ----------
 document.addEventListener('click',e=>{
+  if(e.target.closest('.aq'))return; // abrir o aquecimento não abre o treino
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a;
   if(a==='mes'){const k=addMes(mes,Number(b.dataset.d));if(k>=INICIO){mes=k;render();window.scrollTo(0,0);}}
