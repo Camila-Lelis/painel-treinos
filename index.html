@@ -51,7 +51,20 @@
   input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
   .semana{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px 14px}
   .semana.atual{border-color:var(--gold)}
-  .semana>.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .semana>.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none;user-select:none}
+  .semana>.top::-webkit-details-marker{display:none}
+  .semana[open]>.top{margin-bottom:8px}
+  .semana .car{color:var(--muted);font-size:11px;width:12px;transition:transform .15s}
+  .semana[open] .car{transform:rotate(90deg)}
+  .mov{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;font-variant-numeric:tabular-nums}
+  .mov th,.mov td{padding:3px 4px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+  .mov th:first-child,.mov td:first-child{text-align:left;padding-left:0;overflow-wrap:anywhere}
+  .mov thead th{background:none;color:var(--muted);font-weight:600;font-size:11px;white-space:nowrap}
+  .mov tfoot td{background:none;font-weight:700;border-top:1px solid #555;border-bottom:none;white-space:nowrap}
+  .analise .mov{font-size:13px;margin-top:10px}
+  .analise .gp{margin-top:8px}
+  .analise .gp span{display:block;font-size:12px;color:var(--muted)}
+  .analise .gp b{font-size:15px}
   .semana h3{margin:0;font-size:15.5px}
   .semana .prog{margin-left:auto;color:var(--muted);font-size:12.5px}
   .semana .prog.cheio{color:var(--good)}
@@ -247,6 +260,7 @@ function semanasDoMes(k){
 
 let mes=(()=>{const k=mesDaSemana(iso(segundaDe(new Date())));return k<INICIO?INICIO:k;})();
 let A=null,analisando=false,tConf=null;
+const abertas=new Set([iso(segundaDe(new Date()))]); // semanas abertas: começa só com a atual e lembra o que a pessoa abrir
 
 function status(msg,cls){const el=$('st');el.className=cls||'';el.textContent=msg;}
 const horaAgora=()=>{const d=new Date();return dois(d.getHours())+':'+dois(d.getMinutes());};
@@ -264,6 +278,14 @@ function guarda(t){const i=D.treinos.findIndex(x=>x.id===t.id);if(i>=0)D.treinos
 
 // ---------- calendário ----------
 const tempos=t=>[['Avançado',t.tempoAvancado],['Básico',t.tempoBasico],['Iniciante',t.tempoIniciante]].filter(x=>x[1]);
+const movs=t=>(t.movimentos||'').split('\n').map(l=>l.split(' | ')).filter(p=>p.length===4);
+function tabelaMov(t,curto){
+  const m=movs(t);if(!m.length)return '';
+  const cab=curto?['Av.','Bás.','Ini.']:['Avançado','Básico','Iniciante'];
+  return `<table class="mov"><thead><tr><th>Movimento (min:s)</th>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`+
+    `<tbody>${m.map(p=>`<tr>${p.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody>`+
+    `<tfoot><tr><td>Total</td>${[t.tempoAvancado,t.tempoBasico,t.tempoIniciante].map(v=>`<td>${esc(v)} min</td>`).join('')}</tr></tfoot></table>`;
+}
 function cardCheio(t,rot){
   const tp=tempos(t);
   // o cartão é um bloco, não um botão: um menu expansível não funciona dentro de um botão
@@ -272,6 +294,7 @@ function cardCheio(t,rot){
     (t.aquecimento?`<details class="aq"><summary>Aquecimento</summary><div>${esc(t.aquecimento)}</div></details>`:'')+
     `<span class="pr">${esc(t.principal)}</span>`+
     (tp.length?`<span class="tempos">${tp.map(([r,v])=>`<span class="tp"><small>${r}</small><b>${esc(v)} min</b></span>`).join('')}</span>`:'')+
+    tabelaMov(t,true)+
     (t.tipo?`<span class="chips"><span class="chip">${esc(t.tipo)}</span></span>`:'')+
     (t.grupos?`<span class="gr">${esc(t.grupos)}</span>`:'')+
     (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+`</div>`;
@@ -295,11 +318,11 @@ function render(){
     reg.filter(t=>Number(t.treino)>qtd).sort((a,b)=>a.treino-b.treino).forEach(t=>cards.push(cardCheio(t,'Treino '+t.treino)));
     const cheios=reg.filter(t=>Number(t.treino)<=qtd).length;feitos+=cheios;avulsos+=av.length;
     const fds=av.map(t=>cardCheio(t,rotuloTreino(t))).join('')+(pode()?`<button class="card novo" data-a="novo-avulso" data-sem="${s}">+ Treino avulso</button>`:'');
-    return `<section class="semana${s===atual?' atual':''}">
-      <div class="top"><h3>${rotuloSemana(s)}</h3>${s===atual?'<span class="tag">esta semana</span>':''}<span class="prog${cheios>=qtd?' cheio':''}">${cheios} de ${qtd} treinos</span></div>
+    return `<details class="semana${s===atual?' atual':''}" data-sem="${s}"${abertas.has(s)?' open':''}>
+      <summary class="top"><span class="car">▶</span><h3>${rotuloSemana(s)}</h3>${s===atual?'<span class="tag">esta semana</span>':''}<span class="prog${cheios>=qtd?' cheio':''}">${cheios} de ${qtd} treinos</span></summary>
       <div class="cards reg">${cards.join('')}</div>
       ${fds?`<div class="fds"><div class="rot">Fim de semana (opcional)</div><div class="cards">${fds}</div></div>`:''}
-    </section>`;
+    </details>`;
   }).join('');
   const total=sems.length*qtd;
   $('m-info').textContent=`${qtd} treinos por semana · ${feitos} de ${total} cadastrados neste mês`+(avulsos?` · ${avulsos} avulso${avulsos>1?'s':''}`:'');
@@ -322,7 +345,7 @@ function montaAnalise(){
   const el=$('ed-analise');
   if(analisando){el.innerHTML='<div class="analise neutra">Analisando o treino com a IA…</div>';return;}
   if(tempos(A).length||A.tipo||A.grupos){
-    el.innerHTML=`<div class="analise"><div class="t">Análise da IA</div><div class="g">${tempos(A).map(([r,v])=>`<div><span>${r}</span><b>${esc(v)} min</b></div>`).join('')}<div><span>Tipo</span><b>${esc(A.tipo)}</b></div><div class="w"><span>Grupamentos principais</span><b>${esc(A.grupos)}</b></div></div>${A.comentario?`<p>${esc(A.comentario)}</p>`:''}${A.duvida?`<div class="duvida"><p><b>Dúvida da IA:</b> ${esc(A.duvida)}</p>${pode()?`<div class="ajuda"><span>Responda em Observações e salve: a IA analisa de novo.</span><button data-a="responder">Responder</button></div>`:''}</div>`:''}<p class="nota">Tempo só do treino principal, sem aquecimento e finalização. Estimativa automática: confira antes de usar.</p></div>`;
+    el.innerHTML=`<div class="analise"><div class="t">Análise da IA</div><div class="g">${tempos(A).map(([r,v])=>`<div><span>${r}</span><b>${esc(v)} min</b></div>`).join('')}<div><span>Tipo</span><b>${esc(A.tipo)}</b></div></div>${tabelaMov(A,false)}<div class="gp"><span>Grupamentos principais</span><b>${esc(A.grupos)}</b></div>${A.comentario?`<p>${esc(A.comentario)}</p>`:''}${A.duvida?`<div class="duvida"><p><b>Dúvida da IA:</b> ${esc(A.duvida)}</p>${pode()?`<div class="ajuda"><span>Responda em Observações e salve: a IA analisa de novo.</span><button data-a="responder">Responder</button></div>`:''}</div>`:''}<p class="nota">Tempo só do treino principal, sem aquecimento e finalização. Estimativa automática: confira antes de usar.</p></div>`;
     return;
   }
   el.innerHTML=!A.novo&&pode()&&!D.ia?'<div class="analise neutra">A análise automática de tempo, grupamentos e tipo de treino ainda não foi ligada.</div>':'';
@@ -332,6 +355,7 @@ function montaAcoes(){
   if(!pode()){$('ed-acts').innerHTML='<button data-a="fechar">Fechar</button>';return;}
   $('ed-acts').innerHTML=`<button class="pri" data-a="salvar">Salvar</button>`+
     (!A.novo&&D.ia?`<button data-a="analisar">Analisar de novo</button>`:'')+
+    `<button data-a="fechar">Fechar</button>`+
     `<span class="msg" id="ed-msg" role="status"></span>`+
     (!A.novo?`<button data-a="excluir">Excluir</button>`:'');
 }
@@ -450,6 +474,8 @@ document.addEventListener('click',e=>{
   if(a==='c-remove')confirma2(b,'Remover?',()=>coachAcao({action:'coach-remove',id:b.dataset.id}));
   if(a==='sair')sair();
 });
+// "toggle" não sobe pela página; a captura no documento pega a abertura e o fechamento de cada semana
+document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('details.semana'))d.open?abertas.add(d.dataset.sem):abertas.delete(d.dataset.sem);},true);
 document.addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.coach;if(id)coachAcao({action:'coach-papel',id,papel:e.target.value});});
 // ao voltar para a aba, traz o que outro coach alterou
 let ultima=Date.now();
