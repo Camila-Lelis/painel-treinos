@@ -55,7 +55,7 @@
   .semana>.top::-webkit-details-marker{display:none}
   .semana[open]>.top{margin-bottom:8px}
   .semana .car{color:var(--muted);font-size:11px;width:12px;transition:transform .15s}
-  .semana[open] .car{transform:rotate(90deg)}
+  .semana[open]>.top .car{transform:rotate(90deg)}
   .mov{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;font-variant-numeric:tabular-nums}
   .mov th,.mov td{padding:3px 4px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
   .mov th:first-child,.mov td:first-child{text-align:left;padding-left:0;overflow-wrap:anywhere}
@@ -69,9 +69,9 @@
   .semana .prog{margin-left:auto;color:var(--muted);font-size:12.5px}
   .semana .prog.cheio{color:var(--good)}
   .tag{display:inline-block;font-size:10.5px;font-weight:700;background:var(--gold);color:#111;border-radius:99px;padding:0 7px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;align-items:start}
   .cards.reg{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-  .card{display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;width:100%;min-height:86px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);font-size:13.5px}
+  .card{display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;width:100%;min-height:58px;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);font-size:13.5px}
   .card.vazio{background:transparent;border-style:dashed;color:var(--muted)}
   .card .q{display:block;font-size:12px;color:var(--muted)}
   .card .q b{color:var(--gold)}
@@ -79,7 +79,16 @@
   .card.vazio .tit{font-weight:400}
   .card[data-a]{cursor:pointer}
   .card[data-a]:hover{border-color:var(--gold)}
-  .card button.q{width:100%;padding:0;background:none;border:0;border-radius:0;font:inherit;font-size:12px;color:var(--muted);text-align:left}
+  details.card{display:block}
+  .card .cab{display:flex;gap:8px;align-items:flex-start;list-style:none;cursor:pointer;user-select:none}
+  .card .cab::-webkit-details-marker{display:none}
+  .card .cab .car{color:var(--muted);font-size:10px;line-height:1;margin-top:5px;transition:transform .15s}
+  details.card[open]>.cab .car{transform:rotate(90deg)}
+  .card .cabt{display:block;min-width:0}
+  .card .cabt .tit{margin-bottom:0}
+  .card .pend{display:block;font-size:11.5px;font-weight:600;color:var(--gold);margin-top:2px}
+  .card .corpo{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin-top:8px}
+  .card .abrir{margin-top:10px}
   .aq{width:100%;margin-bottom:2px;cursor:default}
   .aq summary{cursor:pointer;padding:6px 0;font-size:12.5px;font-weight:600;color:var(--muted)}
   .aq summary:hover{color:var(--text)}
@@ -261,6 +270,7 @@ function semanasDoMes(k){
 let mes=(()=>{const k=mesDaSemana(iso(segundaDe(new Date())));return k<INICIO?INICIO:k;})();
 let A=null,analisando=false,tConf=null;
 const abertas=new Set([iso(segundaDe(new Date()))]); // semanas abertas: começa só com a atual e lembra o que a pessoa abrir
+const abertosT=new Set(); // treinos expandidos: todos começam recolhidos
 
 function status(msg,cls){const el=$('st');el.className=cls||'';el.textContent=msg;}
 const horaAgora=()=>{const d=new Date();return dois(d.getHours())+':'+dois(d.getMinutes());};
@@ -288,16 +298,19 @@ function tabelaMov(t,curto){
 }
 function cardCheio(t,rot){
   const tp=tempos(t);
-  // o cartão é um bloco, não um botão: um menu expansível não funciona dentro de um botão
-  return `<div class="card" data-a="abrir" data-id="${esc(t.id)}"><button class="q" data-a="abrir" data-id="${esc(t.id)}"><b>${esc(rot)}</b>${t.dias&&t.treino!=='Avulso'?' · '+esc(t.dias):''}</button>`+
+  // Recolhido, o treino mostra só o cabeçalho; tocar nele expande. Com o treino aberto, tocar no conteúdo abre a edição.
+  return `<details class="card" data-a="abrir" data-id="${esc(t.id)}"${abertosT.has(t.id)?' open':''}>`+
+    `<summary class="cab"><span class="car">▶</span><span class="cabt"><span class="q"><b>${esc(rot)}</b>${t.dias&&t.treino!=='Avulso'?' · '+esc(t.dias):''}</span>`+
     (t.titulo?`<span class="tit">${esc(t.titulo)}</span>`:'')+
+    (t.duvida?'<span class="pend">A IA tem uma dúvida</span>':'')+`</span></summary><div class="corpo">`+
     (t.aquecimento?`<details class="aq"><summary>Aquecimento</summary><div>${esc(t.aquecimento)}</div></details>`:'')+
     `<span class="pr">${esc(t.principal)}</span>`+
     (tp.length?`<span class="tempos">${tp.map(([r,v])=>`<span class="tp"><small>${r}</small><b>${esc(v)} min</b></span>`).join('')}</span>`:'')+
     tabelaMov(t,true)+
     (t.tipo?`<span class="chips"><span class="chip">${esc(t.tipo)}</span></span>`:'')+
     (t.grupos?`<span class="gr">${esc(t.grupos)}</span>`:'')+
-    (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+`</div>`;
+    (t.duvida?`<span class="dv"><b>Dúvida da IA:</b> ${esc(t.duvida)}</span>`:'')+
+    `<button class="mini abrir" data-a="abrir" data-id="${esc(t.id)}">${pode()?'Abrir para editar':'Abrir treino'}</button></div></details>`;
 }
 function cardVazio(s,n){
   const rot='Treino '+n;
@@ -457,7 +470,7 @@ async function copiar(btn){
 
 // ---------- eventos ----------
 document.addEventListener('click',e=>{
-  if(e.target.closest('.aq'))return; // abrir o aquecimento não abre o treino
+  if(e.target.closest('.aq')||e.target.closest('summary.cab'))return; // expandir o treino ou o aquecimento não abre a edição
   const b=e.target.closest('[data-a]');if(!b)return;
   const a=b.dataset.a;
   if(a==='mes'){const k=addMes(mes,Number(b.dataset.d));if(k>=INICIO){mes=k;render();window.scrollTo(0,0);}}
@@ -475,7 +488,11 @@ document.addEventListener('click',e=>{
   if(a==='sair')sair();
 });
 // "toggle" não sobe pela página; a captura no documento pega a abertura e o fechamento de cada semana
-document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('details.semana'))d.open?abertas.add(d.dataset.sem):abertas.delete(d.dataset.sem);},true);
+document.addEventListener('toggle',e=>{
+  const d=e.target;if(!d.matches)return;
+  if(d.matches('details.semana'))d.open?abertas.add(d.dataset.sem):abertas.delete(d.dataset.sem);
+  else if(d.matches('details.card'))d.open?abertosT.add(d.dataset.id):abertosT.delete(d.dataset.id);
+},true);
 document.addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.coach;if(id)coachAcao({action:'coach-papel',id,papel:e.target.value});});
 // ao voltar para a aba, traz o que outro coach alterou
 let ultima=Date.now();
