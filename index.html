@@ -139,11 +139,12 @@
   .esc.vazio .v{color:var(--muted)}
   .esc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
   .esc:focus-within{outline:2px solid var(--gold);outline-offset:1px}
-  /* cor de cada turma do mesmo horário: mesmas cores e mesma ordem do item 5 do Painel Financeiro */
-  .esc.c0{border:2px solid #5aa9ff;background:rgba(90,169,255,.15)}
-  .esc.c1{border:2px solid #4cc38a;background:rgba(76,195,138,.15)}
-  .esc.c2{border:2px solid #c18cff;background:rgba(193,140,255,.15)}
-  .esc.c3{border:2px solid #ff9f5a;background:rgba(255,159,90,.15)}
+  /* cor de cada turma do mesmo horário, só no fundo: mesmas cores e mesma ordem do item 5 do Painel Financeiro */
+  .esc.c0,.esc.c1,.esc.c2,.esc.c3{border-color:#4a4a4a}
+  .esc.c0{background:rgba(90,169,255,.32)}
+  .esc.c1{background:rgba(76,195,138,.32)}
+  .esc.c2{background:rgba(193,140,255,.32)}
+  .esc.c3{background:rgba(255,159,90,.32)}
   .diaau{padding:8px 0 4px;border-top:1px solid var(--line)}
   .rotdia{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
   .aula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
