@@ -128,12 +128,13 @@
   .aba.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
   .au-tit{margin-top:14px;font-size:15px;color:var(--gold)}
   .au-sec{margin:20px 0 0;font-size:16px}
-  table.grade{min-width:640px}
-  table.grade th,table.grade td{text-align:center}
+  table.grade{width:100%;table-layout:fixed}
+  table.grade th,table.grade td{text-align:center;padding:5px 2px}
+  table.grade th:first-child{width:50px}
   table.grade td.hora{font-weight:700;font-variant-numeric:tabular-nums}
   table.grade td.sem{color:#555}
-  table.grade select{width:auto;min-width:92px;padding:3px 6px;font-size:13px}
-  table.grade small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+  table.grade select{display:block;width:100%;max-width:120px;margin:0 auto;padding:4px 2px;font-size:13px;text-align:center;text-align-last:center;-webkit-appearance:none;appearance:none}
+  table.grade select.vazio{color:var(--muted)}
   .diaau{padding:8px 0 4px;border-top:1px solid var(--line)}
   .rotdia{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
   .aula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
@@ -552,10 +553,14 @@ function aulasDoMes(k){
 function renderAulas(){
   const k=mesAu,[gk,rows]=gradeDoMes(k),hoje=iso(new Date()),atual=iso(segundaDe(new Date())),lista=aulasDoMes(k),nm=nomeMesMin(k);
   $('au-nome').textContent=nomeMes(k);$('au-ant').disabled=k<=AU.grade.recInicio;
-  const grade=rows.length?`<div class="tbl"><table class="grade"><thead><tr><th>Horário</th>${DIAS_AU.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>`+
-    rows.map(r=>`<tr><td class="hora">${esc(r.hora)}</td>${DIAS_AU.map(([d,l])=>r[d]===''?'<td class="sem">·</td>':
-      `<td><select data-esc="${gk}|${esc(r.hora)}|${d}" aria-label="Professor das ${esc(r.hora)} de ${l}">${optsProf((AU.escala[gk]||{})[r.hora+'|'+d]||'')}</select><small>${r[d]} aluno${r[d]===1?'':'s'}</small></td>`).join('')}</tr>`).join('')+
-    `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia no Painel Financeiro.</p>';
+  const usados=DIAS_AU.filter(([d])=>rows.some(r=>r[d]!=='')); // só os dias que têm aula, para caber no celular
+  const grade=rows.length?`<div class="tbl"><table class="grade"><thead><tr><th>Hora</th>${usados.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>`+
+    rows.map(r=>`<tr><td class="hora">${esc(r.hora)}</td>${usados.map(([d,l])=>{
+      if(r[d]==='')return '<td class="sem">·</td>';
+      const p=(AU.escala[gk]||{})[r.hora+'|'+d]||'';
+      return `<td><select class="${p?'':'vazio'}" data-esc="${gk}|${esc(r.hora)}|${d}" aria-label="Professor das ${esc(r.hora)} de ${l}">${optsProf(p)}</select></td>`;
+    }).join('')}</tr>`).join('')+
+    `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia.</p>';
   const semanas=new Map();lista.forEach(a=>{const s=iso(segundaDe(dataDe(a.data)));if(!semanas.has(s))semanas.set(s,[]);semanas.get(s).push(a);});
   const semHtml=[...semanas].map(([s,as])=>{
     const feitas=as.filter(a=>a.ok).length,dias=new Map();
@@ -567,7 +572,7 @@ function renderAulas(){
   const tot={},noMes={};
   Object.entries(AU.registro).forEach(([key,r])=>{if(!r.ok||!r.p)return;tot[r.p]=(tot[r.p]||0)+1;if(key.startsWith(k+'-'))noMes[r.p]=(noMes[r.p]||0)+1;});
   const nomes=[...new Set([...AU.professores,...Object.keys(tot)])],pend=lista.filter(a=>a.data<=hoje&&!a.ok).length;
-  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">A grade vem do item 5 do Painel Financeiro. Escolha quem dá cada aula fixa; nos dias, dá para trocar quem deu a aula antes de confirmar.</p>${grade}`+
+  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">Escolha quem dá cada aula fixa; nos dias, dá para trocar quem deu a aula antes de confirmar.</p>${grade}`+
     `<h3 class="au-sec">Aulas de ${nm}</h3>`+(semHtml||'<p class="sub">Nenhuma aula neste mês.</p>')+
     `<div class="resumoau"><h3>Aulas dadas</h3><div class="tbl"><table><thead><tr><th>Professor</th><th class="r">Em ${nm}</th><th class="r">Total desde o início</th></tr></thead><tbody>`+
     nomes.map(n=>`<tr><td>${esc(n)}</td><td class="r">${noMes[n]||0}</td><td class="r"><b>${tot[n]||0}</b></td></tr>`).join('')+
