@@ -22,6 +22,7 @@
     --good:#4cc38a; --bad:#ff6b6b;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--text);font:14.5px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
   .wrap{max-width:1500px;margin:0 auto;padding:0 28px 80px}
   header{display:flex;align-items:center;gap:16px;padding:12px 0 10px;border-bottom:3px solid var(--gold)}
@@ -122,6 +123,29 @@
   .msg{font-size:12.5px;color:var(--bad);min-height:18px}
   .msg.ok{color:var(--good);font-weight:600}
   .entrar-linha{display:flex;gap:8px;margin-top:12px}
+  .abas{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  .aba{padding:7px 16px;font-size:14px;border-radius:99px}
+  .aba.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
+  .au-tit{margin-top:14px;font-size:15px;color:var(--gold)}
+  .au-sec{margin:20px 0 0;font-size:16px}
+  table.grade{min-width:640px}
+  table.grade th,table.grade td{text-align:center}
+  table.grade td.hora{font-weight:700;font-variant-numeric:tabular-nums}
+  table.grade td.sem{color:#555}
+  table.grade select{width:auto;min-width:92px;padding:3px 6px;font-size:13px}
+  table.grade small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+  .diaau{padding:8px 0 4px;border-top:1px solid var(--line)}
+  .rotdia{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+  .aula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
+  .aula .h{font-weight:700;font-variant-numeric:tabular-nums;min-width:46px}
+  .aula select{width:auto;min-width:110px}
+  .aula label{display:flex;align-items:center;gap:6px;font-size:13.5px}
+  .aula input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--gold)}
+  .aula.feita .h{color:var(--good)}
+  .aula input:disabled+span{color:var(--muted)}
+  .resumoau{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+  .resumoau h3{margin:0;font-size:16px}
+  .resumoau .r{text-align:right;font-variant-numeric:tabular-nums}
   #entrada .msg{margin-top:8px}
   dialog{width:min(880px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:0}
   dialog::backdrop{background:rgba(0,0,0,.72)}
@@ -188,14 +212,24 @@
   </form>
 
   <main id="app" hidden>
+    <nav class="abas" id="abas" hidden aria-label="Seções do painel">
+      <button class="aba on" data-a="aba" data-aba="treinos">Treinos</button>
+      <button class="aba" data-a="aba" data-aba="aulas">Aulas e professores</button>
+    </nav>
     <div class="barra">
-      <div class="mesnav">
+      <div class="mesnav" id="nav-treinos">
         <button id="m-ant" data-a="mes" data-d="-1" aria-label="Mês anterior">‹</button>
         <h2 id="m-nome"></h2>
         <button data-a="mes" data-d="1" aria-label="Próximo mês">›</button>
       </div>
+      <div class="mesnav" id="nav-aulas" hidden>
+        <button id="au-ant" data-a="mesau" data-d="-1" aria-label="Mês anterior">‹</button>
+        <h2 id="au-nome"></h2>
+        <button data-a="mesau" data-d="1" aria-label="Próximo mês">›</button>
+      </div>
       <div class="eu"><span id="eu"></span><a id="doc" target="_blank" rel="noopener" hidden>Abrir a memória no Google Docs</a><a id="regras" target="_blank" rel="noopener" hidden>Regras da IA</a><button class="mini" id="sair" data-a="sair" hidden>Sair</button></div>
     </div>
+    <div id="sec-treinos">
     <p class="sub" id="m-info"></p>
     <div id="semanas"></div>
 
@@ -213,6 +247,8 @@
         <p class="sub" style="margin-top:10px">Para instalar no celular, o coach abre o link e usa, no iPhone, o Safari em Compartilhar → Adicionar à Tela de Início; no Android, o Chrome no menu ⋮ → Instalar app. Se o app pedir o código ao abrir, é só colar o link de novo.</p>
       </div>
     </details>
+    </div>
+    <div id="sec-aulas" hidden><div id="au-conteudo"></div></div>
   </main>
 </div>
 
@@ -468,6 +504,96 @@ async function copiar(btn){
   setTimeout(()=>{btn.textContent='Copiar';},2000);
 }
 
+// ---------- aulas e professores (só a dona) ----------
+const DIAS_AU=[['seg','Seg'],['ter','Ter'],['qua','Qua'],['qui','Qui'],['sex','Sex'],['sab','Sáb']];
+let AU=null,mesAu=mk(new Date());
+const abertasAu=new Set([iso(segundaDe(new Date()))]);
+const nomeMesMin=k=>MESES[+k.split('-')[1]-1];
+const optsProf=sel=>'<option value="">—</option>'+AU.professores.map(p=>`<option${p===sel?' selected':''}>${esc(p)}</option>`).join('');
+const gradeDoMes=k=>k>=AU.grade.inicio2?['g2',AU.grade.g2]:['g1',AU.grade.g1];
+function nomeGradeAu(gk){
+  const g=AU.grade,ult=addMes(g.inicio2,-1);
+  return gk==='g2'?`Grade de ${nomeMesMin(g.inicio2)} em diante`:(g.recInicio===ult?`Grade de ${nomeMesMin(ult)}`:`Grade até ${nomeMesMin(ult)}`);
+}
+function mostraAba(nome){
+  const au=nome==='aulas';
+  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('on',b.dataset.aba===nome));
+  $('sec-treinos').hidden=au;$('nav-treinos').hidden=au;$('sec-aulas').hidden=!au;$('nav-aulas').hidden=!au;
+  if(au)carregaAulas();
+}
+async function carregaAulas(){
+  if(!AU)$('au-conteudo').innerHTML='<div class="aviso"><p>Carregando a grade de aulas…</p></div>';
+  try{
+    const r=await fetch(API+'?action=aulas&acesso='+encodeURIComponent(COD));
+    let j;try{j=await r.json();}catch(e){throw new Error('Sem conexão com o servidor. Confira a internet e tente de novo.');}
+    if(!j.ok)throw new Error(j.error||'Erro no servidor');
+    AU=j;if(mesAu<AU.grade.recInicio)mesAu=AU.grade.recInicio;
+    renderAulas();
+  }catch(e){
+    const m=e.name==='Error'?e.message:'Sem conexão com o servidor. Confira a internet e tente de novo.';
+    if(!AU)$('au-conteudo').innerHTML=`<div class="aviso"><p>${esc(m)}</p></div>`;else status('Não atualizou as aulas','err');
+  }
+}
+// Todas as aulas do mês: cada dia da semana em que a grade em vigor tem aula naquele horário.
+function aulasDoMes(k){
+  if(k<AU.grade.recInicio)return [];
+  const [gk,rows]=gradeDoMes(k),[y,m]=k.split('-').map(Number),out=[];
+  for(let d=new Date(y,m-1,1);d.getMonth()===m-1;d=soma(d,1)){
+    const par=DIAS_AU[(d.getDay()+6)%7];if(!par)continue; // domingo
+    const dia=par[0];
+    rows.forEach(r=>{
+      if(r[dia]==='')return;
+      const data=iso(d),key=data+'|'+r.hora,reg=AU.registro[key],padrao=(AU.escala[gk]||{})[r.hora+'|'+dia]||'';
+      out.push({data,hora:r.hora,key,prof:reg&&reg.p?reg.p:padrao,ok:!!(reg&&reg.ok)});
+    });
+  }
+  return out.sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
+}
+function renderAulas(){
+  const k=mesAu,[gk,rows]=gradeDoMes(k),hoje=iso(new Date()),atual=iso(segundaDe(new Date())),lista=aulasDoMes(k),nm=nomeMesMin(k);
+  $('au-nome').textContent=nomeMes(k);$('au-ant').disabled=k<=AU.grade.recInicio;
+  const grade=rows.length?`<div class="tbl"><table class="grade"><thead><tr><th>Horário</th>${DIAS_AU.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>`+
+    rows.map(r=>`<tr><td class="hora">${esc(r.hora)}</td>${DIAS_AU.map(([d,l])=>r[d]===''?'<td class="sem">·</td>':
+      `<td><select data-esc="${gk}|${esc(r.hora)}|${d}" aria-label="Professor das ${esc(r.hora)} de ${l}">${optsProf((AU.escala[gk]||{})[r.hora+'|'+d]||'')}</select><small>${r[d]} aluno${r[d]===1?'':'s'}</small></td>`).join('')}</tr>`).join('')+
+    `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia no Painel Financeiro.</p>';
+  const semanas=new Map();lista.forEach(a=>{const s=iso(segundaDe(dataDe(a.data)));if(!semanas.has(s))semanas.set(s,[]);semanas.get(s).push(a);});
+  const semHtml=[...semanas].map(([s,as])=>{
+    const feitas=as.filter(a=>a.ok).length,dias=new Map();
+    as.forEach(a=>{if(!dias.has(a.data))dias.set(a.data,[]);dias.get(a.data).push(a);});
+    return `<details class="semana semau${s===atual?' atual':''}" data-semau="${s}"${abertasAu.has(s)?' open':''}><summary class="top"><span class="car">▶</span><h3>${rotuloSemana(s)}</h3>${s===atual?'<span class="tag">esta semana</span>':''}<span class="prog${feitas===as.length?' cheio':''}">${feitas} de ${as.length} ${as.length===1?'aula confirmada':'aulas confirmadas'}</span></summary>`+
+      [...dias].map(([d,ls])=>`<div class="diaau"><div class="rotdia">${DIAS_AU[(dataDe(d).getDay()+6)%7][1]}, ${dm(dataDe(d))}${d===hoje?' <span class="tag">hoje</span>':''}</div>`+
+        ls.map(a=>{const fut=a.data>hoje;return `<div class="aula${a.ok?' feita':''}"><span class="h">${esc(a.hora)}</span><select data-aula="${a.key}" aria-label="Quem deu a aula de ${dm(dataDe(a.data))} às ${esc(a.hora)}">${optsProf(a.prof)}</select><label><input type="checkbox" data-ok="${a.key}"${a.ok?' checked':''}${fut||!a.prof?' disabled':''}><span>${fut?'Ainda não aconteceu':a.prof?'Aula dada':'Escolha o professor'}</span></label></div>`;}).join('')+`</div>`).join('')+`</details>`;
+  }).join('');
+  const tot={},noMes={};
+  Object.entries(AU.registro).forEach(([key,r])=>{if(!r.ok||!r.p)return;tot[r.p]=(tot[r.p]||0)+1;if(key.startsWith(k+'-'))noMes[r.p]=(noMes[r.p]||0)+1;});
+  const nomes=[...new Set([...AU.professores,...Object.keys(tot)])],pend=lista.filter(a=>a.data<=hoje&&!a.ok).length;
+  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">A grade vem do item 5 do Painel Financeiro. Escolha quem dá cada aula fixa; nos dias, dá para trocar quem deu a aula antes de confirmar.</p>${grade}`+
+    `<h3 class="au-sec">Aulas de ${nm}</h3>`+(semHtml||'<p class="sub">Nenhuma aula neste mês.</p>')+
+    `<div class="resumoau"><h3>Aulas dadas</h3><div class="tbl"><table><thead><tr><th>Professor</th><th class="r">Em ${nm}</th><th class="r">Total desde o início</th></tr></thead><tbody>`+
+    nomes.map(n=>`<tr><td>${esc(n)}</td><td class="r">${noMes[n]||0}</td><td class="r"><b>${tot[n]||0}</b></td></tr>`).join('')+
+    `</tbody></table></div><p class="sub" style="margin-top:8px">${pend?`${pend} aula${pend>1?'s':''} de ${nm} até hoje ainda sem confirmação.`:`Todas as aulas de ${nm} até hoje estão confirmadas.`}</p></div>`;
+}
+async function salvaAula(body,el){
+  el.disabled=true;status('Salvando…');
+  try{const j=await post(body);salvoOk();return j;}
+  catch(e){status('Não salvou: '+e.message,'err');return null;}
+}
+document.addEventListener('change',async e=>{
+  const el=e.target,ds=el.dataset||{};
+  if(ds.esc){
+    const [grade,hora,dia]=ds.esc.split('|');
+    const j=await salvaAula({action:'escala',grade,hora,dia,prof:el.value},el);
+    if(j)AU.escala=j.escala;
+    renderAulas();
+  }else if(ds.aula||ds.ok){
+    const key=ds.aula||ds.ok,[data,hora]=key.split('|'),linha=el.closest('.aula');
+    const prof=linha.querySelector('select').value,ok=linha.querySelector('input').checked&&!!prof;
+    const j=await salvaAula({action:'aula',data,hora,prof,ok},el);
+    if(j){if(j.aula)AU.registro[key]=j.aula;else delete AU.registro[key];}
+    renderAulas(); // se não salvou, volta ao que está gravado
+  }
+});
+
 // ---------- eventos ----------
 document.addEventListener('click',e=>{
   if(e.target.closest('.aq')||e.target.closest('summary.cab'))return; // expandir o treino ou o aquecimento não abre a edição
@@ -486,11 +612,14 @@ document.addEventListener('click',e=>{
   if(a==='c-copiar')copiar(b);
   if(a==='c-remove')confirma2(b,'Remover?',()=>coachAcao({action:'coach-remove',id:b.dataset.id}));
   if(a==='sair')sair();
+  if(a==='aba')mostraAba(b.dataset.aba);
+  if(a==='mesau'&&AU){const k=addMes(mesAu,Number(b.dataset.d));if(k>=AU.grade.recInicio){mesAu=k;renderAulas();window.scrollTo(0,0);}}
 });
 // "toggle" não sobe pela página; a captura no documento pega a abertura e o fechamento de cada semana
 document.addEventListener('toggle',e=>{
   const d=e.target;if(!d.matches)return;
-  if(d.matches('details.semana'))d.open?abertas.add(d.dataset.sem):abertas.delete(d.dataset.sem);
+  if(d.matches('details.semau'))d.open?abertasAu.add(d.dataset.semau):abertasAu.delete(d.dataset.semau);
+  else if(d.matches('details.semana'))d.open?abertas.add(d.dataset.sem):abertas.delete(d.dataset.sem);
   else if(d.matches('details.card'))d.open?abertosT.add(d.dataset.id):abertosT.delete(d.dataset.id);
 },true);
 document.addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.coach;if(id)coachAcao({action:'coach-papel',id,papel:e.target.value});});
@@ -520,6 +649,9 @@ function abrePainel(){
   $('eu').textContent=D.eu.nome+' · '+PAPEL[D.eu.papel];
   $('sair').hidden=!EH_APP;
   render();renderCoaches();
+  const dona=D.eu.papel==='dona';
+  $('abas').hidden=!dona;
+  if(!dona)mostraAba('treinos');else if(!$('sec-aulas').hidden)carregaAulas();
 }
 function mostraEntrada(msg){
   ['carregando','sem','app'].forEach(i=>{$(i).hidden=true;});
@@ -552,6 +684,7 @@ function sair(){
   esqueceCodigo();COD='';D=null;
   $('e-cod').value='';$('coaches').hidden=true;$('doc').hidden=true;$('regras').hidden=true;
   $('semanas').innerHTML='';$('c-lista').innerHTML='';$('eu').textContent=''; // nada fica escondido na página depois de sair
+  AU=null;$('au-conteudo').innerHTML='';$('abas').hidden=true;mostraAba('treinos');
   mostraEntrada();
 }
 $('entrada').addEventListener('submit',e=>{
