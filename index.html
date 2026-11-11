@@ -126,7 +126,7 @@
   .abas{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
   .aba{padding:7px 16px;font-size:14px;border-radius:99px}
   .aba.on{background:var(--gold);color:#111;border-color:var(--gold);font-weight:700}
-  .au-tit{margin-top:14px;font-size:15px;color:var(--gold)}
+  .au-tit{margin-top:14px;font-size:15px;color:#5aa9ff}
   .au-sec{margin:20px 0 0;font-size:16px}
   table.grade{width:100%;table-layout:fixed}
   table.grade th,table.grade td{text-align:center;padding:5px 2px}
@@ -139,6 +139,11 @@
   .esc.vazio .v{color:var(--muted)}
   .esc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
   .esc:focus-within{outline:2px solid var(--gold);outline-offset:1px}
+  /* cor de cada turma do mesmo horário: mesmas cores e mesma ordem do item 5 do Painel Financeiro */
+  .esc.c0{border:2px solid #5aa9ff;background:rgba(90,169,255,.15)}
+  .esc.c1{border:2px solid #4cc38a;background:rgba(76,195,138,.15)}
+  .esc.c2{border:2px solid #c18cff;background:rgba(193,140,255,.15)}
+  .esc.c3{border:2px solid #ff9f5a;background:rgba(255,159,90,.15)}
   .diaau{padding:8px 0 4px;border-top:1px solid var(--line)}
   .rotdia{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
   .aula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
@@ -516,6 +521,13 @@ const abertasAu=new Set([iso(segundaDe(new Date()))]);
 const nomeMesMin=k=>MESES[+k.split('-')[1]-1];
 const optsProf=sel=>'<option value="">—</option>'+(AU.opcoes||AU.professores).map(p=>`<option${p===sel?' selected':''}>${esc(p)}</option>`).join('');
 const gradeDoMes=k=>k>=AU.grade.inicio2?['g2',AU.grade.g2]:['g1',AU.grade.g1];
+// Turmas do mesmo horário numa linha só; cada turma ganha a cor pela ordem do primeiro dia (mesma regra do Painel Financeiro).
+const primeiroDiaAu=r=>{const i=DIAS_AU.findIndex(([d])=>r[d]!=='');return i<0?99:i;};
+function horasAu(rows){
+  const m=new Map();rows.forEach(r=>{if(!m.has(r.hora))m.set(r.hora,[]);m.get(r.hora).push(r);});
+  m.forEach(ts=>ts.sort((a,b)=>primeiroDiaAu(a)-primeiroDiaAu(b)));
+  return [...m].sort((a,b)=>a[0].localeCompare(b[0]));
+}
 function nomeGradeAu(gk){
   const g=AU.grade,ult=addMes(g.inicio2,-1);
   return gk==='g2'?`Grade de ${nomeMesMin(g.inicio2)} em diante`:(g.recInicio===ult?`Grade de ${nomeMesMin(ult)}`:`Grade até ${nomeMesMin(ult)}`);
@@ -559,10 +571,11 @@ function renderAulas(){
   $('au-nome').textContent=nomeMes(k);$('au-ant').disabled=k<=AU.grade.recInicio;
   const usados=DIAS_AU.filter(([d])=>rows.some(r=>r[d]!=='')); // só os dias que têm aula, para caber no celular
   const grade=rows.length?`<div class="tbl"><table class="grade"><thead><tr><th>Hora</th>${usados.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>`+
-    rows.map(r=>`<tr><td class="hora">${esc(r.hora)}</td>${usados.map(([d,l])=>{
-      if(r[d]==='')return '<td class="sem">·</td>';
-      const p=(AU.escala[gk]||{})[r.hora+'|'+d]||'';
-      return `<td><label class="esc${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span><select data-esc="${gk}|${esc(r.hora)}|${d}" aria-label="Professor das ${esc(r.hora)} de ${l}">${optsProf(p)}</select></label></td>`;
+    horasAu(rows).map(([hora,ts])=>`<tr><td class="hora">${esc(hora)}</td>${usados.map(([d,l])=>{
+      const i=ts.findIndex(t=>t[d]!=='');
+      if(i<0)return '<td class="sem">·</td>';
+      const p=(AU.escala[gk]||{})[hora+'|'+d]||'';
+      return `<td><label class="esc c${i%4}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span><select data-esc="${gk}|${esc(hora)}|${d}" aria-label="Professor das ${esc(hora)} de ${l}">${optsProf(p)}</select></label></td>`;
     }).join('')}</tr>`).join('')+
     `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia.</p>';
   const semanas=new Map();lista.forEach(a=>{const s=iso(segundaDe(dataDe(a.data)));if(!semanas.has(s))semanas.set(s,[]);semanas.get(s).push(a);});
