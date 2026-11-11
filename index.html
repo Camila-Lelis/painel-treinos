@@ -572,7 +572,7 @@ function renderAulas(){
   const tot={},noMes={};
   Object.entries(AU.registro).forEach(([key,r])=>{if(!r.ok||!r.p)return;tot[r.p]=(tot[r.p]||0)+1;if(key.startsWith(k+'-'))noMes[r.p]=(noMes[r.p]||0)+1;});
   const nomes=[...new Set([...AU.professores,...Object.keys(tot)])],pend=lista.filter(a=>a.data<=hoje&&!a.ok).length;
-  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">Escolha quem dá cada aula fixa; nos dias, dá para trocar quem deu a aula antes de confirmar.</p>${grade}`+
+  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">Escolha o professor de cada aula fixa.</p>${grade}`+
     `<h3 class="au-sec">Aulas de ${nm}</h3>`+(semHtml||'<p class="sub">Nenhuma aula neste mês.</p>')+
     `<div class="resumoau"><h3>Aulas dadas</h3><div class="tbl"><table><thead><tr><th>Professor</th><th class="r">Em ${nm}</th><th class="r">Total desde o início</th></tr></thead><tbody>`+
     nomes.map(n=>`<tr><td>${esc(n)}</td><td class="r">${noMes[n]||0}</td><td class="r"><b>${tot[n]||0}</b></td></tr>`).join('')+
