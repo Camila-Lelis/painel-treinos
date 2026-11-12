@@ -588,7 +588,7 @@ function renderAulas(){
         ls.map(a=>{const fut=a.data>hoje;return `<div class="aula${a.ok?' feita':''}"><span class="h">${esc(a.hora)}</span><select data-aula="${a.key}" aria-label="Quem deu a aula de ${dm(dataDe(a.data))} às ${esc(a.hora)}">${optsProf(a.prof)}</select><label><input type="checkbox" data-ok="${a.key}"${a.ok?' checked':''}${fut||!a.prof?' disabled':''}><span>${fut?'Ainda não aconteceu':a.prof?'Aula dada':'Escolha o professor'}</span></label></div>`;}).join('')+`</div>`).join('')+`</details>`;
   }).join('');
   const tot={},noMes={};
-  // "Kelly e Lelis" conta uma aula para cada uma
+  // "Lelis e Kelly" conta uma aula para cada uma
   Object.entries(AU.registro).forEach(([key,r])=>{if(!r.ok||!r.p)return;r.p.split(' e ').forEach(n=>{tot[n]=(tot[n]||0)+1;if(key.startsWith(k+'-'))noMes[n]=(noMes[n]||0)+1;});});
   const nomes=[...new Set([...AU.professores,...Object.keys(tot)])],pend=lista.filter(a=>a.data<=hoje&&!a.ok).length;
   $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">Escolha o professor de cada aula fixa.</p>${grade}`+
