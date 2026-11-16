@@ -153,6 +153,11 @@
   .aula label{display:flex;align-items:center;gap:6px;font-size:13.5px}
   .aula input[type=checkbox]{width:20px;height:20px;margin:0;accent-color:var(--gold)}
   .aula.feita .h{color:var(--good)}
+  .esc.so{cursor:default}
+  .aula .pnome{min-width:110px;font-size:14px}
+  .aula .pnome.vazio{color:var(--muted)}
+  .aula .st{font-size:13.5px;color:var(--muted)}
+  .aula.feita .st{color:var(--good)}
   .aula input:disabled+span{color:var(--muted)}
   .resumoau{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
   .resumoau h3{margin:0;font-size:16px}
@@ -515,7 +520,7 @@ async function copiar(btn){
   setTimeout(()=>{btn.textContent='Copiar';},2000);
 }
 
-// ---------- aulas e professores (só a dona) ----------
+// ---------- aulas e professores (todos veem; só a dona altera) ----------
 const DIAS_AU=[['seg','Seg'],['ter','Ter'],['qua','Qua'],['qui','Qui'],['sex','Sex'],['sab','Sáb']];
 let AU=null,mesAu=mk(new Date());
 const abertasAu=new Set([iso(segundaDe(new Date()))]);
@@ -568,6 +573,7 @@ function aulasDoMes(k){
   return out.sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
 }
 function renderAulas(){
+  const pode=D.eu.papel==='dona'; // os coaches só veem
   const k=mesAu,[gk,rows]=gradeDoMes(k),hoje=iso(new Date()),atual=iso(segundaDe(new Date())),lista=aulasDoMes(k),nm=nomeMesMin(k);
   $('au-nome').textContent=nomeMes(k);$('au-ant').disabled=k<=AU.grade.recInicio;
   const usados=DIAS_AU.filter(([d])=>rows.some(r=>r[d]!=='')); // só os dias que têm aula, para caber no celular
@@ -576,6 +582,7 @@ function renderAulas(){
       const i=ts.findIndex(t=>t[d]!=='');
       if(i<0)return '<td class="sem">·</td>';
       const p=(AU.escala[gk]||{})[hora+'|'+d]||'';
+      if(!pode)return `<td><span class="esc so c${i%4}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span></span></td>`;
       return `<td><label class="esc c${i%4}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span><select data-esc="${gk}|${esc(hora)}|${d}" aria-label="Professor das ${esc(hora)} de ${l}">${optsProf(p)}</select></label></td>`;
     }).join('')}</tr>`).join('')+
     `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia.</p>';
@@ -585,13 +592,15 @@ function renderAulas(){
     as.forEach(a=>{if(!dias.has(a.data))dias.set(a.data,[]);dias.get(a.data).push(a);});
     return `<details class="semana semau${s===atual?' atual':''}" data-semau="${s}"${abertasAu.has(s)?' open':''}><summary class="top"><span class="car">▶</span><h3>${rotuloSemana(s)}</h3>${s===atual?'<span class="tag">esta semana</span>':''}<span class="prog${feitas===as.length?' cheio':''}">${feitas} de ${as.length} ${as.length===1?'aula confirmada':'aulas confirmadas'}</span></summary>`+
       [...dias].map(([d,ls])=>`<div class="diaau"><div class="rotdia">${DIAS_AU[(dataDe(d).getDay()+6)%7][1]}, ${dm(dataDe(d))}${d===hoje?' <span class="tag">hoje</span>':''}</div>`+
-        ls.map(a=>{const fut=a.data>hoje;return `<div class="aula${a.ok?' feita':''}"><span class="h">${esc(a.hora)}</span><select data-aula="${a.key}" aria-label="Quem deu a aula de ${dm(dataDe(a.data))} às ${esc(a.hora)}">${optsProf(a.prof)}</select><label><input type="checkbox" data-ok="${a.key}"${a.ok?' checked':''}${fut||!a.prof?' disabled':''}><span>${fut?'Ainda não aconteceu':a.prof?'Aula dada':'Escolha o professor'}</span></label></div>`;}).join('')+`</div>`).join('')+`</details>`;
+        ls.map(a=>{const fut=a.data>hoje;
+          if(!pode)return `<div class="aula${a.ok?' feita':''}"><span class="h">${esc(a.hora)}</span><span class="pnome${a.prof?'':' vazio'}">${a.prof?esc(a.prof):'—'}</span><span class="st">${a.ok?'✓ Aula dada':fut?'Ainda não aconteceu':'Aguardando confirmação'}</span></div>`;
+          return `<div class="aula${a.ok?' feita':''}"><span class="h">${esc(a.hora)}</span><select data-aula="${a.key}" aria-label="Quem deu a aula de ${dm(dataDe(a.data))} às ${esc(a.hora)}">${optsProf(a.prof)}</select><label><input type="checkbox" data-ok="${a.key}"${a.ok?' checked':''}${fut||!a.prof?' disabled':''}><span>${fut?'Ainda não aconteceu':a.prof?'Aula dada':'Escolha o professor'}</span></label></div>`;}).join('')+`</div>`).join('')+`</details>`;
   }).join('');
   const tot={},noMes={};
   // "Lelis e Kelly" conta uma aula para cada uma
   Object.entries(AU.registro).forEach(([key,r])=>{if(!r.ok||!r.p)return;r.p.split(' e ').forEach(n=>{tot[n]=(tot[n]||0)+1;if(key.startsWith(k+'-'))noMes[n]=(noMes[n]||0)+1;});});
   const nomes=[...new Set([...AU.professores,...Object.keys(tot)])],pend=lista.filter(a=>a.data<=hoje&&!a.ok).length;
-  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">Escolha o professor de cada aula fixa.</p>${grade}`+
+  $('au-conteudo').innerHTML=`<div class="ctitle au-tit">${nomeGradeAu(gk)}</div><p class="sub">${pode?'Escolha o professor de cada aula fixa.':'Quem dá cada aula fixa. Só a dona muda a escala e confirma as aulas.'}</p>${grade}`+
     `<h3 class="au-sec">Aulas de ${nm}</h3>`+(semHtml||'<p class="sub">Nenhuma aula neste mês.</p>')+
     `<div class="resumoau"><h3>Aulas dadas</h3><div class="tbl"><table><thead><tr><th>Professor</th><th class="r">Em ${nm}</th><th class="r">Total desde o início</th></tr></thead><tbody>`+
     nomes.map(n=>`<tr><td>${esc(n)}</td><td class="r">${noMes[n]||0}</td><td class="r"><b>${tot[n]||0}</b></td></tr>`).join('')+
@@ -674,8 +683,8 @@ function abrePainel(){
   $('sair').hidden=!EH_APP;
   render();renderCoaches();
   const dona=D.eu.papel==='dona';
-  $('abas').hidden=!dona;
-  if(!dona)mostraAba('treinos');else if(!$('sec-aulas').hidden)carregaAulas();
+  $('abas').hidden=false; // todos veem as aulas; só a dona altera
+  if(!$('sec-aulas').hidden)carregaAulas();
 }
 function mostraEntrada(msg){
   ['carregando','sem','app'].forEach(i=>{$(i).hidden=true;});
