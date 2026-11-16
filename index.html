@@ -140,11 +140,14 @@
   .esc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
   .esc:focus-within{outline:2px solid var(--gold);outline-offset:1px}
   /* cor de cada turma do mesmo horário, só no fundo: mesmas cores e mesma ordem do item 5 do Painel Financeiro */
-  .esc.c0,.esc.c1,.esc.c2,.esc.c3{border-color:#4a4a4a}
+  .esc.c0,.esc.c1,.esc.c2,.esc.c3,.esc.c4,.esc.c5,.esc.c6{border-color:#4a4a4a}
   .esc.c0{background:rgba(90,169,255,.32)}
   .esc.c1{background:rgba(76,195,138,.32)}
   .esc.c2{background:rgba(193,140,255,.32)}
   .esc.c3{background:rgba(255,159,90,.32)}
+  .esc.c4{background:rgba(255,95,200,.32)}
+  .esc.c5{background:rgba(242,227,79,.32)}
+  .esc.c6{background:rgba(255,77,77,.32)}
   .diaau{padding:8px 0 4px;border-top:1px solid var(--line)}
   .rotdia{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
   .aula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:4px 0}
@@ -527,7 +530,11 @@ const abertasAu=new Set([iso(segundaDe(new Date()))]);
 const nomeMesMin=k=>MESES[+k.split('-')[1]-1];
 const optsProf=sel=>'<option value="">—</option>'+(AU.opcoes||AU.professores).map(p=>`<option${p===sel?' selected':''}>${esc(p)}</option>`).join('');
 const gradeDoMes=k=>k>=AU.grade.inicio2?['g2',AU.grade.g2]:['g1',AU.grade.g1];
-// Turmas do mesmo horário numa linha só; cada turma ganha a cor pela ordem do primeiro dia (mesma regra do Painel Financeiro).
+// Turmas do mesmo horário numa linha só. Cor: a escolhida no item 5 do Painel Financeiro; sem escolha, a primeira da paleta
+// que nenhuma outra turma do horário usa, em ordem do primeiro dia (mesma paleta e mesma regra do financeiro, coresHora).
+const CORES_AU=['azul','verde','roxo','laranja','rosa','amarelo','vermelho'];
+function coresHoraAu(ts){const idx=c=>CORES_AU.indexOf(c),usadas=new Set(ts.map(t=>idx(t.cor)).filter(i=>i>=0)),m=new Map();
+  ts.forEach(t=>{let i=idx(t.cor);if(i<0){i=0;while(usadas.has(i)&&i<CORES_AU.length-1)i++;usadas.add(i);}m.set(t,i);});return m;}
 const primeiroDiaAu=r=>{const i=DIAS_AU.findIndex(([d])=>r[d]!=='');return i<0?99:i;};
 function horasAu(rows){
   const m=new Map();rows.forEach(r=>{if(!m.has(r.hora))m.set(r.hora,[]);m.get(r.hora).push(r);});
@@ -579,11 +586,11 @@ function renderAulas(){
   const usados=DIAS_AU.filter(([d])=>rows.some(r=>r[d]!=='')); // só os dias que têm aula, para caber no celular
   const grade=rows.length?`<div class="tbl"><table class="grade"><thead><tr><th>Hora</th>${usados.map(([,l])=>`<th>${l}</th>`).join('')}</tr></thead><tbody>`+
     horasAu(rows).map(([hora,ts])=>`<tr><td class="hora">${esc(hora)}</td>${usados.map(([d,l])=>{
-      const i=ts.findIndex(t=>t[d]!=='');
+      const i=ts.findIndex(t=>t[d]!==''),ci=i<0?0:coresHoraAu(ts).get(ts[i]);
       if(i<0)return '<td class="sem">·</td>';
       const p=(AU.escala[gk]||{})[hora+'|'+d]||'';
-      if(!pode)return `<td><span class="esc so c${i%4}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span></span></td>`;
-      return `<td><label class="esc c${i%4}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span><select data-esc="${gk}|${esc(hora)}|${d}" aria-label="Professor das ${esc(hora)} de ${l}">${optsProf(p)}</select></label></td>`;
+      if(!pode)return `<td><span class="esc so c${ci}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span></span></td>`;
+      return `<td><label class="esc c${ci}${p?'':' vazio'}"><span class="v">${p?esc(p):'—'}</span><select data-esc="${gk}|${esc(hora)}|${d}" aria-label="Professor das ${esc(hora)} de ${l}">${optsProf(p)}</select></label></td>`;
     }).join('')}</tr>`).join('')+
     `</tbody></table></div>`:'<p class="sub">A grade deste período está vazia.</p>';
   const semanas=new Map();lista.forEach(a=>{const s=iso(segundaDe(dataDe(a.data)));if(!semanas.has(s))semanas.set(s,[]);semanas.get(s).push(a);});
